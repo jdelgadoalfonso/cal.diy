@@ -12,6 +12,7 @@ node_modules
 # testing
 coverage
 /test-results/
+/test-configs/
 **/playwright/videos
 **/playwright/screenshots
 **/playwright/artifacts
