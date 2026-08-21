@@ -1,4 +1,4 @@
-import { Prisma } from "@calcom/prisma/client";
+import type { Prisma } from "@calcom/prisma/client";
 import prisma from "@calcom/prisma";
 import dayjs from "@calcom/dayjs";
 
@@ -24,8 +24,6 @@ export async function getBookingsDurationSum(params: BookingAggregateParams): Pr
     excludeUid,
     statuses = ["ACCEPTED"],
   } = params;
-  
-  console.log("DEBUG QUERY getBookingsDurationSum params:", { attendeeEmail, eventTypeIds, startDate, endDate, excludeUid });
 
   const where: Prisma.BookingWhereInput = {
     eventTypeId: { in: eventTypeIds },
@@ -41,7 +39,6 @@ export async function getBookingsDurationSum(params: BookingAggregateParams): Pr
     where,
     select: { startTime: true, endTime: true },
   });
-  console.log("DEBUG QUERY findMany result:", bookings);
 
   return bookings.reduce((sum, b) => {
     const duration = dayjs(b.endTime).diff(b.startTime, "minutes") / 60;
@@ -69,7 +66,6 @@ export async function getStudentGlobalHours(
     where,
     select: { startTime: true, endTime: true },
   });
-  console.log("DEBUG QUERY findMany result:", bookings);
 
   return bookings.reduce((sum, b) => {
     const duration = dayjs(b.endTime).diff(b.startTime, "minutes") / 60;
