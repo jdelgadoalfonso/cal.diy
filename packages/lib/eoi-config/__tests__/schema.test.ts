@@ -122,8 +122,8 @@ describe("eoiConstraintsConfigSchema", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.studentMaxHours["test@test.com"]["Test"].lectiva).toBe(10);
-      expect(result.data.studentMaxHours["test@test.com"]["Test"].tutorias).toBeUndefined();
+      expect(result.data.studentMaxHours["test@test.com"].Test.lectiva).toBe(10);
+      expect(result.data.studentMaxHours["test@test.com"].Test.tutorias).toBeUndefined();
     }
   });
 });

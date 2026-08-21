@@ -5,32 +5,31 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { cwd } from "node:process";
+import process from "node:process";
 
 import { loadEoiConfig, clearConfigCache } from "../loader";
-import { eoiConstraintsConfigSchema } from "../schema";
 
-const TEST_CONFIG_DIR = path.resolve(__dirname, "..", "..", "..", "..", "test-configs");
+const TEST_CONFIG_DIR: string = path.resolve(__dirname, "..", "..", "..", "..", "test-configs");
 
-function setupTestConfigDir() {
+function setupTestConfigDir(): void {
   if (!fs.existsSync(TEST_CONFIG_DIR)) {
     fs.mkdirSync(TEST_CONFIG_DIR, { recursive: true });
   }
 }
 
-function writeTestConfig(filename: string, content: string) {
+function writeTestConfig(filename: string, content: string): void {
   setupTestConfigDir();
   fs.writeFileSync(path.join(TEST_CONFIG_DIR, filename), content);
 }
 
-function removeTestConfig(filename: string) {
+function _removeTestConfig(filename: string): void {
   const filepath = path.join(TEST_CONFIG_DIR, filename);
   if (fs.existsSync(filepath)) {
     fs.unlinkSync(filepath);
   }
 }
 
-function cleanupTestConfigDir() {
+function cleanupTestConfigDir(): void {
   if (fs.existsSync(TEST_CONFIG_DIR)) {
     fs.rmSync(TEST_CONFIG_DIR, { recursive: true, force: true });
   }
@@ -170,7 +169,7 @@ eventTypeMap:
 
   it("returns default config when file not found and no custom path", () => {
     // biome-ignore lint/correctness/noProcessGlobal: mocking process.cwd for test
-    const originalCwd = process.cwd;
+    const _originalCwd = process.cwd;
     const tempDir = path.join(TEST_CONFIG_DIR, "empty-for-not-found");
     fs.mkdirSync(tempDir, { recursive: true });
 
@@ -190,7 +189,7 @@ eventTypeMap:
   it("returns default config when customPath is undefined and no config file exists", () => {
     // Mock process.cwd to a temp directory without config
     // biome-ignore lint/correctness/noProcessGlobal: mocking process.cwd for test
-    const originalCwd = process.cwd;
+    const _originalCwd = process.cwd;
     const tempDir = path.join(TEST_CONFIG_DIR, "empty");
     fs.mkdirSync(tempDir, { recursive: true });
 
@@ -214,7 +213,7 @@ eventTypeMap:
 `;
     // Write to a location that findConfigFile will check
     // biome-ignore lint/correctness/noProcessGlobal: mocking process.cwd for test
-    const originalCwd = process.cwd;
+    const _originalCwd = process.cwd;
     const tempDir = path.join(TEST_CONFIG_DIR, "cwd-test");
     fs.mkdirSync(tempDir, { recursive: true });
     fs.writeFileSync(path.join(tempDir, "eoi-constraints.yaml"), yamlContent);
