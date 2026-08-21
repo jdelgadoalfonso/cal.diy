@@ -24,6 +24,7 @@ import type {
 import EventManager, { placeholderCreatedEvent } from "@calcom/features/bookings/lib/EventManager";
 import { getAssignmentReasonCategory } from "@calcom/features/bookings/lib/getAssignmentReasonCategory";
 import type { CheckBookingAndDurationLimitsService } from "@calcom/features/bookings/lib/handleNewBooking/checkBookingAndDurationLimits";
+import { getCheckEoiBookingLimitsService } from "@calcom/features/bookings/di/CheckEoiBookingLimits.container";
 import { handlePayment } from "@calcom/features/bookings/lib/handlePayment";
 import { handleWebhookTrigger } from "@calcom/features/bookings/lib/handleWebhookTrigger";
 import { isEventTypeLoggingEnabled } from "@calcom/features/bookings/lib/isEventTypeLoggingEnabled";
@@ -819,6 +820,33 @@ async function handler(
       reqBodyStart: reqBody.start,
       reqBodyRescheduleUid: reqBody.rescheduleUid,
     });
+
+    // EOI Booking Constraints: Check per-student, total daily, and global limits
+    const checkEoiBookingLimitsService = getCheckEoiBookingLimitsService();
+    const durationHours = dayjs(reqBody.end).diff(reqBody.start, "minutes") / 60;
+    const rescheduleUid = reqBody.rescheduleUid;
+
+    // Check for primary attendee (booker)
+    await checkEoiBookingLimitsService.enforceLimits({
+      attendeeEmail: bookerEmail,
+      eventTypeId: eventType.id,
+      startTime: new Date(reqBody.start),
+      endTime: new Date(reqBody.end),
+      durationHours,
+      rescheduleUid,
+    });
+
+    // Also check additional attendees (guests) if they count
+    for (const guest of reqGuests || []) {
+      await checkEoiBookingLimitsService.enforceLimits({
+        attendeeEmail: guest,
+        eventTypeId: eventType.id,
+        startTime: new Date(reqBody.start),
+        endTime: new Date(reqBody.end),
+        durationHours,
+        rescheduleUid,
+      });
+    }
   }
 
   let luckyUserResponse;

@@ -1,0 +1,38 @@
+# EOI Booking Constraints Configuration
+# Place this file at the root of cal.diy (next to package.json) or in config/
+# Copy to eoi-constraints.yaml and customize
+
+# Required: Maps cal.diy eventTypeId to course + hourType
+# Get eventTypeId from cal.diy UI (Event Type settings) or API
+eventTypeMap:
+  "1":
+    course: "Programación Web"
+    hourType: "lectiva"
+  "2":
+    course: "Programación Web"
+    hourType: "tutorias"
+  "3":
+    course: "Inglés Técnico"
+    hourType: "lectiva"
+  "4":
+    course: "Inglés Técnico"
+    hourType: "tutorias"
+
+# Optional: Daily limits (defaults shown)
+dailyLimits:
+  perStudentPerDay: 2    # Max hours per student per day per course per hourType
+  totalPerDay: 8         # Max total hours across all students per day per course per hourType
+
+# Optional: Per-student global max hours per course per hourType
+# Key = attendee email (lowercase), value = course -> hourType -> max hours
+studentMaxHours:
+  "alumno1@eoi.es":
+    "Programación Web":
+      lectiva: 20
+      tutorias: 10
+    "Inglés Técnico":
+      lectiva: 15
+  "alumno2@eoi.es":
+    "Programación Web":
+      lectiva: 20
+      tutorias: 10

@@ -923,6 +923,7 @@ model Booking {
   @@index([status])
   @@index([startTime, endTime, status])
   @@index([fromReschedule])
+  @@index([eventTypeId, startTime, status])
   @@index([userId, endTime])
   @@index([userId, status, startTime])
   @@index([eventTypeId, status])
