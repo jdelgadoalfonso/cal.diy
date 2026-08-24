@@ -825,6 +825,7 @@ async function handler(
     const checkEoiBookingLimitsService = getCheckEoiBookingLimitsService();
     const durationHours = dayjs(reqBody.end).diff(reqBody.start, "minutes") / 60;
     const rescheduleUid = reqBody.rescheduleUid;
+    const timeZone = reqBody.timeZone;
 
     // Check for primary attendee (booker)
     await checkEoiBookingLimitsService.enforceLimits({
@@ -834,6 +835,7 @@ async function handler(
       endTime: new Date(reqBody.end),
       durationHours,
       rescheduleUid,
+      timeZone,
     });
 
     // Also check additional attendees (guests) if they count
@@ -845,6 +847,7 @@ async function handler(
         endTime: new Date(reqBody.end),
         durationHours,
         rescheduleUid,
+        timeZone,
       });
     }
   }

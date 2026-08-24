@@ -1,12 +1,12 @@
 import { CheckEoiBookingLimitsService } from "@calcom/features/bookings/lib/checkEoiBookingLimits";
-import { bindModuleToClassOnToken, createModule, type Module, type ModuleLoader, type Token } from "@calcom/features/di/di";
+import { bindModuleToClassOnToken, createModule, type Container, type Module, type ModuleLoader } from "@calcom/features/di/di";
 import { DI_TOKENS } from "@calcom/features/di/tokens";
 
 const thisModule: Module = createModule();
-const token: Token = DI_TOKENS.CHECK_EOI_BOOKING_LIMITS_SERVICE;
-const moduleToken: Token = DI_TOKENS.CHECK_EOI_BOOKING_LIMITS_SERVICE_MODULE;
+const token = DI_TOKENS.CHECK_EOI_BOOKING_LIMITS_SERVICE;
+const moduleToken = DI_TOKENS.CHECK_EOI_BOOKING_LIMITS_SERVICE_MODULE;
 
-const loadModule: ModuleLoader = bindModuleToClassOnToken({
+const loadModule = bindModuleToClassOnToken({
   module: thisModule,
   moduleToken,
   token,

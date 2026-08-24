@@ -1,6 +1,7 @@
-import type { Prisma } from "@calcom/prisma/client";
-import prisma from "@calcom/prisma";
 import dayjs from "@calcom/dayjs";
+import prisma from "@calcom/prisma";
+import type { Prisma } from "@calcom/prisma/client";
+import { BookingStatus } from "@calcom/prisma/enums";
 
 interface BookingAggregateParams {
   attendeeEmail?: string;
@@ -8,21 +9,23 @@ interface BookingAggregateParams {
   startDate: Date;
   endDate: Date;
   excludeUid?: string;
-  statuses?: string[];
+  statuses?: BookingStatus[];
 }
 
 /**
  * Gets the sum of booking durations (in hours) for the given parameters.
  * Only counts ACCEPTED bookings by default.
  */
-export async function getBookingsDurationSum(params: BookingAggregateParams): Promise<number> {
+export async function getBookingsDurationSum(
+  params: BookingAggregateParams
+): Promise<number> {
   const {
     attendeeEmail,
     eventTypeIds,
     startDate,
     endDate,
     excludeUid,
-    statuses = ["ACCEPTED"],
+    statuses = [BookingStatus.ACCEPTED],
   } = params;
 
   const where: Prisma.BookingWhereInput = {
