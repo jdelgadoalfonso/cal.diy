@@ -14,7 +14,7 @@ describe("eoiConstraintsConfigSchema", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.eventTypeMap["1"]).toEqual({ course: "Test", hourType: "lectiva" });
-      expect(result.data.dailyLimits).toEqual({ perStudentPerDay: 2, totalPerDay: 8 });
+      expect(result.data.dailyLimits).toEqual({ perStudentPerDay: 2 });
       expect(result.data.studentMaxHours).toEqual({});
     }
   });
@@ -25,7 +25,7 @@ describe("eoiConstraintsConfigSchema", () => {
         "1": { course: "Programación Web", hourType: "lectiva" },
         "2": { course: "Programación Web", hourType: "tutorias" },
       },
-      dailyLimits: { perStudentPerDay: 3, totalPerDay: 10 },
+      dailyLimits: { perStudentPerDay: 3 },
       studentMaxHours: {
         "alumno@eoi.es": {
           "Programación Web": { lectiva: 20, tutorias: 10 },
@@ -65,7 +65,7 @@ describe("eoiConstraintsConfigSchema", () => {
   it("rejects negative daily limits", () => {
     const input = {
       eventTypeMap: {},
-      dailyLimits: { perStudentPerDay: -1, totalPerDay: 8 },
+      dailyLimits: { perStudentPerDay: -1 },
     };
 
     const result = eoiConstraintsConfigSchema.safeParse(input);
@@ -76,7 +76,7 @@ describe("eoiConstraintsConfigSchema", () => {
   it("rejects non-integer daily limits", () => {
     const input = {
       eventTypeMap: {},
-      dailyLimits: { perStudentPerDay: 2.5, totalPerDay: 8 },
+      dailyLimits: { perStudentPerDay: 2.5 },
     };
 
     const result = eoiConstraintsConfigSchema.safeParse(input);
@@ -134,7 +134,7 @@ describe("getDefaultConfig", () => {
 
     expect(config).toEqual({
       eventTypeMap: {},
-      dailyLimits: { perStudentPerDay: 2, totalPerDay: 8 },
+      dailyLimits: { perStudentPerDay: 2 },
       studentMaxHours: {},
     });
   });

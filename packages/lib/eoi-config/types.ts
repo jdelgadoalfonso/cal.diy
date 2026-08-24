@@ -7,7 +7,6 @@ export interface EventTypeMapping {
 
 export interface DailyLimits {
   perStudentPerDay: number;
-  totalPerDay: number;
 }
 
 export interface StudentMaxHours {

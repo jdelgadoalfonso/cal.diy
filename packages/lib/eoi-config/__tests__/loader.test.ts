@@ -57,7 +57,6 @@ eventTypeMap:
     hourType: "tutorias"
 dailyLimits:
   perStudentPerDay: 3
-  totalPerDay: 6
 studentMaxHours:
   "student@example.com":
     "Ingles B1":
@@ -71,7 +70,6 @@ studentMaxHours:
     expect(config.eventTypeMap["1"]).toEqual({ course: "Ingles B1", hourType: "lectiva" });
     expect(config.eventTypeMap["2"]).toEqual({ course: "Ingles B1", hourType: "tutorias" });
     expect(config.dailyLimits.perStudentPerDay).toBe(3);
-    expect(config.dailyLimits.totalPerDay).toBe(6);
     expect(config.studentMaxHours["student@example.com"]["Ingles B1"].lectiva).toBe(50);
     expect(config.studentMaxHours["student@example.com"]["Ingles B1"].tutorias).toBe(10);
   });
@@ -88,7 +86,6 @@ eventTypeMap:
     const config = loadEoiConfig(path.join(TEST_CONFIG_DIR, "minimal.yaml"));
 
     expect(config.dailyLimits.perStudentPerDay).toBe(2);
-    expect(config.dailyLimits.totalPerDay).toBe(8);
     expect(config.studentMaxHours).toEqual({});
   });
 
@@ -167,9 +164,80 @@ eventTypeMap:
     expect(config2.eventTypeMap["1"].course).toBe("Frances A1");
   });
 
+  it("loads config from EOI_CONSTRAINTS_PATH environment variable", () => {
+    const yamlContent = `
+eventTypeMap:
+  "42":
+    course: "Aleman B2"
+    hourType: "lectiva"
+`;
+    writeTestConfig("env-var.yaml", yamlContent);
+
+    const originalEnv = process.env.EOI_CONSTRAINTS_PATH;
+    process.env.EOI_CONSTRAINTS_PATH = path.join(TEST_CONFIG_DIR, "env-var.yaml");
+    try {
+      // cwd points elsewhere (no discoverable config)
+      const tempDir = path.join(TEST_CONFIG_DIR, "empty-env");
+      fs.mkdirSync(tempDir, { recursive: true });
+      const cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tempDir);
+
+      const config = loadEoiConfig();
+
+      expect(config.eventTypeMap["42"]).toEqual({ course: "Aleman B2", hourType: "lectiva" });
+      expect(cwdSpy).toHaveBeenCalled();
+
+      vi.restoreAllMocks();
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } finally {
+      if (originalEnv === undefined) {
+        delete process.env.EOI_CONSTRAINTS_PATH;
+      } else {
+        process.env.EOI_CONSTRAINTS_PATH = originalEnv;
+      }
+    }
+  });
+
+  it("warns loudly when no config file is found", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // Prevent the __dirname-relative candidate from resolving to the real
+    // repo eoi-constraints.yaml so the test is deterministic.
+    vi.spyOn(fs, "existsSync").mockReturnValue(false);
+    const tempDir = path.join(TEST_CONFIG_DIR, "empty-warn");
+    fs.mkdirSync(tempDir, { recursive: true });
+
+    vi.spyOn(process, "cwd").mockReturnValue(tempDir);
+
+    loadEoiConfig();
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("eoi-constraints.yaml"));
+
+    vi.restoreAllMocks();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("does not warn when a config file is found", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const yamlContent = `
+eventTypeMap:
+  "1":
+    course: "Ingles B1"
+    hourType: "lectiva"
+`;
+    writeTestConfig("found-no-warn.yaml", yamlContent);
+
+    loadEoiConfig(path.join(TEST_CONFIG_DIR, "found-no-warn.yaml"));
+
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+
   it("returns default config when file not found and no custom path", () => {
     // biome-ignore lint/correctness/noProcessGlobal: mocking process.cwd for test
     const _originalCwd = process.cwd;
+    // Prevent the __dirname-relative candidate from resolving to the real
+    // repo eoi-constraints.yaml so the test is deterministic.
+    vi.spyOn(fs, "existsSync").mockReturnValue(false);
     const tempDir = path.join(TEST_CONFIG_DIR, "empty-for-not-found");
     fs.mkdirSync(tempDir, { recursive: true });
 
@@ -179,7 +247,6 @@ eventTypeMap:
 
     expect(config.eventTypeMap).toEqual({});
     expect(config.dailyLimits.perStudentPerDay).toBe(2);
-    expect(config.dailyLimits.totalPerDay).toBe(8);
     expect(config.studentMaxHours).toEqual({});
 
     vi.restoreAllMocks();
@@ -190,6 +257,9 @@ eventTypeMap:
     // Mock process.cwd to a temp directory without config
     // biome-ignore lint/correctness/noProcessGlobal: mocking process.cwd for test
     const _originalCwd = process.cwd;
+    // Prevent the __dirname-relative candidate from resolving to the real
+    // repo eoi-constraints.yaml so the test is deterministic.
+    vi.spyOn(fs, "existsSync").mockReturnValue(false);
     const tempDir = path.join(TEST_CONFIG_DIR, "empty");
     fs.mkdirSync(tempDir, { recursive: true });
 

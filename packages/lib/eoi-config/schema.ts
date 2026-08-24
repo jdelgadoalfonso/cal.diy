@@ -13,10 +13,8 @@ export const eventTypeMappingSchema: z.ZodObject<{
 
 export const dailyLimitsSchema: z.ZodObject<{
   perStudentPerDay: z.ZodDefault<z.ZodNumber>;
-  totalPerDay: z.ZodDefault<z.ZodNumber>;
 }> = z.object({
   perStudentPerDay: z.number().int().positive().default(2),
-  totalPerDay: z.number().int().positive().default(8),
 });
 
 export const studentMaxHoursSchema: z.ZodRecord<
@@ -39,44 +37,22 @@ export const studentMaxHoursSchema: z.ZodRecord<
   )
 );
 
-export const eoiConstraintsConfigSchema: z.ZodTransform<
-  z.ZodObject<{
-    eventTypeMap: z.ZodRecord<z.ZodString, z.ZodObject<{
-      course: z.ZodString;
-      hourType: z.ZodEnum<["lectiva", "tutorias"]>;
-    }>>;
-    dailyLimits: z.ZodOptional<z.ZodObject<{
-      perStudentPerDay: z.ZodDefault<z.ZodNumber>;
-      totalPerDay: z.ZodDefault<z.ZodNumber>;
-    }>>;
-    studentMaxHours: z.ZodOptional<z.ZodRecord<
-      z.ZodString,
-      z.ZodRecord<
-        z.ZodString,
-        z.ZodObject<{
-          lectiva: z.ZodOptional<z.ZodNumber>;
-          tutorias: z.ZodOptional<z.ZodNumber>;
-        }>
-      >
-    >>;
-  }>,
-  EoiConstraintsConfig
-> = z.object({
+export const eoiConstraintsConfigSchema = z.object({
   eventTypeMap: z.record(z.string(), eventTypeMappingSchema),
   dailyLimits: dailyLimitsSchema.optional(),
   studentMaxHours: studentMaxHoursSchema.optional(),
 }).transform((data) => ({
   ...data,
-  dailyLimits: data.dailyLimits ?? { perStudentPerDay: 2, totalPerDay: 8 },
+  dailyLimits: data.dailyLimits ?? { perStudentPerDay: 2 },
   studentMaxHours: data.studentMaxHours ?? {},
-}));
+})) as z.ZodType<EoiConstraintsConfig>;
 
 export type EoiConstraintsConfigSchema = z.infer<typeof eoiConstraintsConfigSchema>;
 
 export function getDefaultConfig(): EoiConstraintsConfig {
   return {
     eventTypeMap: {},
-    dailyLimits: { perStudentPerDay: 2, totalPerDay: 8 },
+    dailyLimits: { perStudentPerDay: 2 },
     studentMaxHours: {},
   };
 }

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { cwd } from "node:process";
+import process from "node:process";
 import yaml from "yaml";
 import { eoiConstraintsConfigSchema } from "./schema";
 import type { EoiConstraintsConfig } from "./types";
@@ -10,17 +10,20 @@ let configPath: string | null = null;
 
 function findConfigFile(): string | null {
   const candidates = [
-    path.resolve(cwd(), "eoi-constraints.yaml"),
-    path.resolve(cwd(), "config", "eoi-constraints.yaml"),
+    process.env.EOI_CONSTRAINTS_PATH
+      ? path.resolve(process.env.EOI_CONSTRAINTS_PATH)
+      : null,
+    path.resolve(process.cwd(), "eoi-constraints.yaml"),
+    path.resolve(process.cwd(), "config", "eoi-constraints.yaml"),
     path.resolve(__dirname, "..", "..", "..", "eoi-constraints.yaml"),
-  ];
+  ].filter((candidate): candidate is string => candidate !== null);
   return candidates.find(fs.existsSync) || null;
 }
 
 function getDefaultConfig(): EoiConstraintsConfig {
   return {
     eventTypeMap: {},
-    dailyLimits: { perStudentPerDay: 2, totalPerDay: 8 },
+    dailyLimits: { perStudentPerDay: 2 },
     studentMaxHours: {},
   };
 }
@@ -28,6 +31,10 @@ function getDefaultConfig(): EoiConstraintsConfig {
 export function loadEoiConfig(customPath?: string): EoiConstraintsConfig {
   const filePath = customPath || configPath || findConfigFile();
   if (!filePath) {
+    console.warn(
+      "[eoi-config] No eoi-constraints.yaml found (searched $EOI_CONSTRAINTS_PATH, cwd/, cwd/config/, package root/). " +
+        "EOI booking constraints are DISABLED: all bookings will be allowed."
+    );
     return getDefaultConfig();
   }
 
@@ -45,7 +52,7 @@ export function loadEoiConfig(customPath?: string): EoiConstraintsConfig {
 
   cachedConfig = result.data;
   configPath = filePath;
-  return cachedConfig;
+  return cachedConfig!;
 }
 
 export function clearConfigCache(): void {

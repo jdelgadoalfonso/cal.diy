@@ -7,11 +7,12 @@ export interface CheckEoiBookingLimitsParams {
   endTime: Date;
   durationHours: number;
   rescheduleUid?: string;
+  timeZone: string;
 }
 
 export interface CheckEoiBookingLimitsResult {
   allowed: boolean;
-  violatedConstraint?: "student_daily" | "total_daily" | "student_global";
+  violatedConstraint?: "student_daily" | "student_global";
   currentUsage?: number;
   limit?: number;
   details?: {
