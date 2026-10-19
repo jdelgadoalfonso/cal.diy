@@ -3,12 +3,6 @@
   "installCommand": "cd ../../.. && rm -rf packages/prisma/zod && yarn install",
   "buildCommand": "cd ../../.. && rm -rf packages/prisma/zod && SKIP_DB_MIGRATIONS=1 yarn turbo run build --filter=@calcom/api-v2",
   "outputDirectory": "dist/apps/api/v2",
-  "functions": {
-    "src/main.js": {
-      "maxDuration": 30,
-      "includeFiles": "../../packages/**"
-    }
-  },
   "rewrites": [
     {
       "source": "/(.*)",
