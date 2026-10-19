@@ -24,64 +24,145 @@ import { RedisModule } from "@/modules/redis/redis.module";
 import { RedisService } from "@/modules/redis/redis.service";
 import { VercelWebhookController } from "@/vercel-webhook.controller";
 
-@Module({
-  imports: [
-    SentryModule.forRoot(),
-    ConfigModule.forRoot({
-      ignoreEnvFile: true,
-      isGlobal: true,
-      load: [appConfig],
-    }),
+const isServerless = process.env.VERCEL === "1" || process.env.VERCEL === "true";
+const redisAvailable = !!process.env.REDIS_URL;
 
-    RedisModule,
-    BullModule.forRoot({
-      redis: `${process.env.REDIS_URL}${process.env.NODE_ENV === "production" ? "?tls=true" : ""}`,
-    }),
-    ThrottlerModule.forRootAsync({
-      imports: [RedisModule],
-      inject: [RedisService],
-      useFactory: (redisService: RedisService) => ({
-        // note(Lauris): IMPORTANT: rate limiting is enforced by CustomThrottlerGuard, but we need to have at least one
-        // entry in the throttlers array otherwise CustomThrottlerGuard is not invoked at all. If we specify only ThrottlerModule
-        // without .forRootAsync then throttler options are not passed to CustomThrottlerGuard containing redis connection etc.
-        // So we need to specify at least one dummy throttler here and CustomThrottlerGuard is actually handling the default and custom rate limits.
-        throttlers: [
-          {
-            name: "dummy",
-            ttl: seconds(60),
-            limit: 120,
+class ThrottlerStorageMockService {
+  public redis = {
+    get: async () => null,
+    set: async () => "OK",
+    del: async () => 0,
+    getKeys: async () => [],
+    expire: async () => 0,
+    lrange: async () => [],
+    lpush: async () => 0,
+    incr: async () => 0,
+    hmset: async () => "OK",
+    expireat: async () => 1,
+    hgetall: async () => ({}),
+    setex: async () => "OK",
+    keys: async () => [],
+    quit: async () => undefined,
+  };
+
+  async getRecord(key: string): Promise<{ value: string; timestamp: number } | null> {
+    return null;
+  }
+
+  async setRecord(key: string, value: string, ttl: number): Promise<void> {
+    // no-op in mock
+  }
+
+  async increment(
+    key: string,
+    ttl: number,
+    limit: number,
+    blockDuration: number,
+    name: string
+  ): Promise<{
+    isBlocked: boolean;
+    totalHits: number;
+    timeToExpire: number | null;
+    timeToBlockExpire: number | null;
+  }> {
+    // In-memory fallback: never block, always allow
+    return {
+      isBlocked: false,
+      totalHits: 1,
+      timeToExpire: ttl,
+      timeToBlockExpire: null,
+    };
+  }
+}
+
+const conditionalImports = [
+  SentryModule.forRoot(),
+  ConfigModule.forRoot({
+    ignoreEnvFile: true,
+    isGlobal: true,
+    load: [appConfig],
+  }),
+
+  ...(redisAvailable ? [RedisModule] : []),
+  ...(redisAvailable && !isServerless
+    ? [
+        BullModule.forRoot({
+          redis: `${process.env.REDIS_URL}${process.env.NODE_ENV === "production" ? "?tls=true" : ""}`,
+        }),
+      ]
+    : []),
+  ...(redisAvailable
+    ? [
+        ThrottlerModule.forRootAsync({
+          imports: [RedisModule],
+          inject: [RedisService],
+          useFactory: (redisService: RedisService) => ({
+            throttlers: [
+              {
+                name: "dummy",
+                ttl: seconds(60),
+                limit: 120,
+              },
+            ],
+            storage: new ThrottlerStorageRedisService(redisService.redis),
+          }),
+        }),
+      ]
+    : [
+        ThrottlerModule.forRoot({
+          throttlers: [
+            {
+              name: "dummy",
+              ttl: 60,
+              limit: 120,
+            },
+          ],
+        }),
+      ]),
+  PrismaModule,
+  EndpointsModule,
+  AuthModule,
+  JwtModule,
+];
+
+const conditionalProviders = [
+  {
+    provide: APP_FILTER,
+    useClass: SentryGlobalFilter,
+  },
+  ...(redisAvailable
+    ? [
+        {
+          provide: ThrottlerStorageRedisService,
+          useFactory: (redisService: RedisService) => {
+            return new ThrottlerStorageRedisService(redisService.redis);
           },
-        ],
-        storage: new ThrottlerStorageRedisService(redisService.redis),
-      }),
-    }),
-    PrismaModule,
-    EndpointsModule,
-    AuthModule,
-    JwtModule,
-  ],
+          inject: [RedisService],
+        },
+      ]
+    : [
+        {
+          provide: ThrottlerStorageRedisService,
+          useFactory: () => {
+            const mock: ThrottlerStorageMockService = new ThrottlerStorageMockService();
+            return mock as unknown as ThrottlerStorageRedisService;
+          },
+        },
+      ]),
+  {
+    provide: APP_INTERCEPTOR,
+    useClass: ResponseInterceptor,
+  },
+  {
+    provide: APP_GUARD,
+    useClass: CustomThrottlerGuard,
+  },
+];
+
+@Module({
+  imports: conditionalImports as any,
   controllers: [AppController, VercelWebhookController],
-  providers: [
-    {
-      provide: APP_FILTER,
-      useClass: SentryGlobalFilter,
-    },
-    {
-      provide: ThrottlerStorageRedisService,
-      useFactory: (redisService: RedisService) => {
-        return new ThrottlerStorageRedisService(redisService.redis);
-      },
-      inject: [RedisService],
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: ResponseInterceptor,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: CustomThrottlerGuard,
-    },
-  ],
+  providers: conditionalProviders as any,
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

@@ -59,7 +59,14 @@ export class RolesGuard implements CanActivate {
     const REDIS_CACHE_KEY = `apiv2:user:${user.id ?? "none"}:org:${orgId ?? "none"}:team:${
       teamId ?? "none"
     }:guard:roles:${allowedRole}`;
-    const cachedAccess = JSON.parse((await this.redisService.redis.get(REDIS_CACHE_KEY)) ?? "false");
+    let cachedAccess = false;
+    if (this.redisService.isReady) {
+      try {
+        cachedAccess = JSON.parse((await this.redisService.redis.get(REDIS_CACHE_KEY)) ?? "false");
+      } catch (err) {
+        this.logger.warn(`RolesGuard - Redis cache read failed, skipping cache: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
 
     if (cachedAccess) {
       return { canAccess: cachedAccess };
@@ -164,8 +171,12 @@ export class RolesGuard implements CanActivate {
       }
     }
 
-    if (canAccess) {
-      await this.redisService.redis.set(REDIS_CACHE_KEY, String(canAccess), "EX", 300);
+    if (canAccess && this.redisService.isReady) {
+      try {
+        await this.redisService.redis.set(REDIS_CACHE_KEY, String(canAccess), "EX", 300);
+      } catch (err) {
+        this.logger.warn(`RolesGuard - Redis cache write failed, skipping cache: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
 
     return { canAccess };

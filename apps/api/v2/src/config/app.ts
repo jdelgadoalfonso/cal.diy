@@ -29,7 +29,7 @@ const loadConfig = (): AppConfig => {
       writePoolMax: getEnv("DATABASE_WRITE_POOL_MAX", 7),
       workerReadPoolMax: getEnv("DATABASE_READ_WORKER_POOL_MAX", 4),
       workerWritePoolMax: getEnv("DATABASE_WRITE_WORKER_POOL_MAX", 6),
-      redisUrl: getEnv("REDIS_URL"),
+      redisUrl: getEnv("REDIS_URL", ""),
       usePool: getEnv("USE_POOL", "true") === "true",
     },
     next: {

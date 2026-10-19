@@ -32,12 +32,18 @@ export class OAuthFlowService {
       }
 
       const cacheKey = this._generateActKey(accessToken);
-      await this.redisService.redis.hmset(cacheKey, {
-        ownerId: ownerId,
-        expiresAt: expiry?.toJSON(),
-      });
+      if (this.redisService.isReady) {
+        try {
+          await this.redisService.redis.hmset(cacheKey, {
+            ownerId: ownerId,
+            expiresAt: expiry?.toJSON(),
+          });
 
-      await this.redisService.redis.expireat(cacheKey, Math.floor(expiry.getTime() / 1000));
+          await this.redisService.redis.expireat(cacheKey, Math.floor(expiry.getTime() / 1000));
+        } catch (err) {
+          this.logger.warn(`OAuthFlowService - Redis cache write failed, skipping cache: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
     } catch (err) {
       this.logger.error("Access Token Propagation Failed, falling back to DB...", err);
     }
@@ -47,9 +53,11 @@ export class OAuthFlowService {
     const cacheKey = this._generateOwnerIdKey(accessToken);
 
     try {
-      const ownerId = await this.redisService.redis.get(cacheKey);
-      if (ownerId) {
-        return Number.parseInt(ownerId);
+      if (this.redisService.isReady) {
+        const ownerId = await this.redisService.redis.get(cacheKey);
+        if (ownerId) {
+          return Number.parseInt(ownerId);
+        }
       }
     } catch (err) {
       this.logger.warn("Cache#getOwnerId fetch failed, falling back to DB...");
@@ -59,8 +67,14 @@ export class OAuthFlowService {
 
     if (!ownerIdFromDb) throw new Error("Invalid Access Token, not present in Redis or DB");
 
-    // await in case of race conditions, but void it's return since cache writes shouldn't halt execution.
-    void (await this.redisService.redis.setex(cacheKey, 3600, ownerIdFromDb)); // expires in 1 hour
+    if (this.redisService.isReady) {
+      try {
+        // await in case of race conditions, but void it's return since cache writes shouldn't halt execution.
+        void (await this.redisService.redis.setex(cacheKey, 3600, ownerIdFromDb)); // expires in 1 hour
+      } catch (err) {
+        this.logger.warn("Cache#getOwnerId write failed, skipping cache");
+      }
+    }
 
     return ownerIdFromDb;
   }
@@ -86,18 +100,35 @@ export class OAuthFlowService {
 
     // we can't use a Promise#all or similar here because we care about execution order
     // however we can't allow caches to fail a validation hence the results are voided.
-    void (await this.redisService.redis.hmset(cacheKey, { expiresAt: tokenExpiresAt.toJSON() }));
-    void (await this.redisService.redis.expireat(cacheKey, Math.floor(tokenExpiresAt.getTime() / 1000)));
+    if (this.redisService.isReady) {
+      try {
+        void (await this.redisService.redis.hmset(cacheKey, { expiresAt: tokenExpiresAt.toJSON() }));
+        void (
+          await this.redisService.redis.expireat(cacheKey, Math.floor(tokenExpiresAt.getTime() / 1000))
+        );
+      } catch (err) {
+        this.logger.warn("OAuthFlowService - Redis cache write failed, skipping cache");
+      }
+    }
 
     return true;
   }
 
   private async readFromCache(secret: string) {
     const cacheKey = this._generateActKey(secret);
-    const tokenData = await this.redisService.redis.hgetall(cacheKey);
 
-    if (tokenData && new Date() < new Date(tokenData.expiresAt)) {
-      return { status: "CACHE_HIT", cacheKey };
+    if (!this.redisService.isReady) {
+      return { status: "CACHE_MISS", cacheKey };
+    }
+
+    try {
+      const tokenData = await this.redisService.redis.hgetall(cacheKey);
+
+      if (tokenData && new Date() < new Date(tokenData.expiresAt)) {
+        return { status: "CACHE_HIT", cacheKey };
+      }
+    } catch (err) {
+      this.logger.warn("OAuthFlowService - Redis cache read failed, falling back to DB...");
     }
 
     return { status: "CACHE_MISS", cacheKey };

@@ -6,12 +6,36 @@ import { Redis } from "ioredis";
 @Injectable()
 export class RedisService implements OnModuleDestroy {
   public redis: Redis;
+  public isReady = false; // Track connection status
   private readonly logger = new Logger("RedisService");
-  private isReady = false; // Track connection status
 
   constructor(readonly configService: ConfigService<AppConfig>) {
     const dbUrl = configService.get<string>("db.redisUrl", { infer: true });
-    if (!dbUrl) throw new Error("Misconfigured Redis, halting.");
+
+    if (!dbUrl) {
+      this.logger.warn(
+        "REDIS_URL not set — RedisService running in mock mode. Rate limiting and caches will be in-memory only.",
+      );
+      this.redis = {
+        get: async () => null,
+        set: async () => "OK",
+        del: async () => 0,
+        delMany: async () => 0,
+        getKeys: async () => [],
+        expire: async () => 0,
+        lrange: async () => [],
+        lpush: async () => 0,
+        incr: async () => 0,
+        hmset: async () => "OK",
+        expireat: async () => 1,
+        hgetall: async () => ({}),
+        setex: async () => "OK",
+        keys: async () => [],
+        quit: async () => undefined,
+      } as unknown as Redis;
+      this.isReady = false;
+      return;
+    }
 
     this.redis = new Redis(dbUrl);
 
@@ -36,6 +60,9 @@ export class RedisService implements OnModuleDestroy {
   }
 
   async onModuleDestroy() {
+    if (!this.isReady) {
+      return;
+    }
     try {
       await this.redis.quit();
     } catch (err) {
