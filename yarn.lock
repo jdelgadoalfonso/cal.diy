@@ -2890,6 +2890,8 @@ __metadata:
 "@calcom/platform-constants@workspace:*, @calcom/platform-constants@workspace:packages/platform/constants":
   version: 0.0.0-use.local
   resolution: "@calcom/platform-constants@workspace:packages/platform/constants"
+  dependencies:
+    typescript: "npm:5.9.3"
   languageName: unknown
   linkType: soft
 

@@ -5,7 +5,7 @@
   "types": "./dist/index.d.ts",
   "private": true,
   "dependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "5.9.3"
   },
   "scripts": {
     "build": "tsc --build --force tsconfig.json",
