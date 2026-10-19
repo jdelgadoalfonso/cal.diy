@@ -6,7 +6,7 @@
   "functions": {
     "src/main.js": {
       "maxDuration": 30,
-      "includeFiles": ["../../packages/**"]
+      "includeFiles": "../../packages/**"
     }
   },
   "rewrites": [
