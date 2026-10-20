@@ -11,6 +11,7 @@ import qs from "qs";
 import { TRIGGER_VERSION } from "../trigger.version";
 import { AppModule } from "./app.module";
 import { bootstrap } from "./bootstrap";
+import { restoreRewrittenUrl } from "./lib/vercel-rewrite/vercel-rewrite";
 import { loggerConfig } from "./lib/logger";
 import type { AppConfig } from "@/config/type";
 
@@ -85,13 +86,16 @@ export default async (req: Request, res: Response): Promise<void> => {
   try {
     const server = await NestServer.getInstance();
 
-    // Vercel/AWS specific: Re-parse query strings to support array formats
-    // (e.g., ?ids[]=1&ids[]=2) which Vercel's native parser might simplify.
+    // Vercel rewrites send every request to this function entry path and pass the original
+    // path through the query string, so rebuild the URL Nest routes on before delegating.
     if (req.url) {
-      const [_path, queryString] = req.url.split("?");
-      if (queryString) {
-        req.query = qs.parse(queryString, { arrayLimit: 1000 });
-      }
+      req.url = restoreRewrittenUrl(req.url);
+
+      // Vercel/AWS specific: Re-parse query strings to support array formats
+      // (e.g., ?ids[]=1&ids[]=2) which Vercel's native parser might simplify.
+      const queryStartIndex = req.url.indexOf("?");
+      const queryString = queryStartIndex === -1 ? "" : req.url.slice(queryStartIndex + 1);
+      req.query = qs.parse(queryString, { arrayLimit: 1000 });
     }
 
     // Delegate request to the cached Express instance

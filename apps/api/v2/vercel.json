@@ -5,7 +5,7 @@
   "outputDirectory": "dist/apps/api/v2",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/:path*",
       "destination": "/src/main.js"
     }
   ]
